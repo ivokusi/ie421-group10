@@ -15,10 +15,22 @@ def run(_context: str):
     try:
         
         design = adsk.fusion.Design.cast(app.activeProduct)
-        retParam = design.userParameters.itemByName("Length")
         
-        ui.messageBox(retParam.expression)
+        paramName = 'Width'
+        paramUnit = 'mm'
+
+        paramExpression = 10.0
+        paramExpressionString = f'{paramExpression} {paramUnit}'
+        paramExpressionReal = adsk.core.ValueInput.createByString(paramExpressionString)
+
+        params = design.userParameters
+        param = params.itemByName(paramName)
+
+        if param is not None:
+            param.expression = paramExpressionString
+        else:
+            design.userParameters.add(paramName, paramExpressionReal, paramUnit, "")
 
     except:  #pylint:disable=bare-except
         # Write the error message to the TEXT COMMANDS window.
-        app.log(f'Failed:\n{traceback.format_exc()}')
+        ui.messageBox(f'Failed:\n{traceback.format_exc()}')
