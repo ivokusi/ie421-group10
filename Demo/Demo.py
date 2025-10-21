@@ -16,20 +16,35 @@ def run(_context: str):
         
         design = adsk.fusion.Design.cast(app.activeProduct)
         
-        paramName = 'Width'
-        paramUnit = 'mm'
-
-        paramExpression = 10.0
-        paramExpressionString = f'{paramExpression} {paramUnit}'
-        paramExpressionReal = adsk.core.ValueInput.createByString(paramExpressionString)
-
-        params = design.userParameters
-        param = params.itemByName(paramName)
-
-        if param is not None:
-            param.expression = paramExpressionString
-        else:
-            design.userParameters.add(paramName, paramExpressionReal, paramUnit, "")
+        # Prompt the user for a string and validate it's valid.
+        isValid = False
+        input = '1 in'  # The initial default value.
+        
+        while not isValid:
+            # Get a string from the user.
+            retVals = ui.inputBox('Enter a distance', 'Distance', input)
+            if retVals[0]:
+                (input, isCancelled) = retVals
+            
+            # Exit the program if the dialog was cancelled.
+            if isCancelled:
+                return
+            
+            # Check that a valid length description was entered.
+            unitsMgr = design.unitsManager
+            try:
+                realValue = unitsMgr.evaluateExpression(input, unitsMgr.defaultLengthUnits)
+                isValid = True
+            except:
+                # Invalid expression so display an error and set the flag to allow them
+                # to enter a value again.
+                ui.messageBox('"' + input + '" is not a valid length expression.', 'Invalid entry', 
+                              adsk.core.MessageBoxButtonTypes.OKButtonType, 
+                              adsk.core.MessageBoxIconTypes.CriticalIconType)
+                isValid = False
+        
+        # Use the value for something.
+        ui.messageBox('input: ' + input + ', result: ' + str(realValue))
 
     except:  #pylint:disable=bare-except
         # Write the error message to the TEXT COMMANDS window.
