@@ -2,8 +2,6 @@
 
 ## Table of Contents
 - [Team](#team)
-- [Installation Instructions](#installation-instructions)
-- [Overview](#overview)
 
 ## Team
 
