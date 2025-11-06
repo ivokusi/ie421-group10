@@ -16,7 +16,7 @@ I'm Ivo Kusijanovic a senior in CS at UIUC (May '26). I currently work at Novopa
 ![alt text](Images/marisol_velapatino_headshot.png "Marisol Guadalupe Velapatiño"){width=130 height=130px}  
 ***Marisol Guadalupe Velapatiño**, Research specialist*
 
-As an undergraduate student in Engineering Physics with a strong foundation in Computer Science, Mathematics, and Semiconductor Engineering, I bring a unique interdisciplinary skill set to the development of high-precision technologies. My technical proficiency spans embedded systems, signal processing, and algorithmic modeling, enabling me to bridge the gap between hardware implementation and computational analysis.
+As an undergraduate student in Engineering Physics (expected May 2026) with a strong foundation in Computer Science, Mathematics, and Semiconductor Engineering, I bring a unique interdisciplinary skill set to the development of high-precision technologies. My technical proficiency spans embedded systems, signal processing, and algorithmic modeling, enabling me to bridge the gap between hardware implementation and computational analysis.
 I’m particularly interested in timing systems, frequency stabilization, and real-time data acquisition, which lie at the core of atomic clock research and high-frequency trading (HFT) synchronization. Through my coursework and hands-on projects, I’ve developed experience in circuit design, and numerical simulation, and I’m driven by a deep curiosity for how physical systems can be optimized through computation and control.
 Ultimately, I aim to contribute to the advancement of precision instrumentation and ultra-low-latency systems—technologies that define the limits of modern science and finance alike.
 
