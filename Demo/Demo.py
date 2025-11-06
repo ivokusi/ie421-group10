@@ -1,8 +1,8 @@
 """This file acts as the main module for this script."""
 
 import traceback
-import adsk.core
-import adsk.fusion
+import adsk.core # type: ignore
+import adsk.fusion # type: ignore
 # import adsk.cam
 
 import math
