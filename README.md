@@ -8,7 +8,8 @@
 ![alt text](Images/ivo_kusijanovic_headshot.jpg "Ivo Kusijanovic"){width=100 height=140px}  
 ***Ivo Kusijanovic**, Team Lead*
 
-Email: [ilk2@illinois.ed](mailto:ilk2@illinois.ed)  
+Email: [ilk2@illinois.edu](mailto:ilk2@illinois.edu)  
+
 LinkedIn: https://www.linkedin.com/in/ilk2/
 
 I'm Ivo Kusijanovic a senior in CS at UIUC (May '26). I currently work at Novopayment, a fintech company providing financial services to banks across Latin America, as an Automation and AI Specialist. Beyond fintech, I’m passionate about cybersecurity and autonomous vehicles, particularly the hardware side. I have hands-on experience with Arduino and Raspberry Pi and am now moving into custom PCB design and manufacturing. I also prototype with FDM and SLA 3D printers and aim to expand into subtractive manufacturing (CNC) through this project. 
@@ -16,7 +17,8 @@ I'm Ivo Kusijanovic a senior in CS at UIUC (May '26). I currently work at Novopa
 ![alt text](Images/marisol_velapatino_headshot.png "Marisol Guadalupe Velapatiño"){width=130 height=130px}  
 ***Marisol Guadalupe Velapatiño**, Research specialist*
 
-Email: [mv31@illinois.ed](mailto:mv31@illinois.ed)  
+Email: [mv31@illinois.edu](mailto:mv31@illinois.edu)  
+
 LinkedIn: https://www.linkedin.com/in/marisol-guadalupe-velapati%C3%B1o-benito-2a232a226/
 
 As an undergraduate student in Engineering Physics (expected May 2026) with a strong foundation in Computer Science, Mathematics, and Semiconductor Engineering, I bring a unique interdisciplinary skill set to the development of high-precision technologies. My technical proficiency spans embedded systems, signal processing, and algorithmic modeling, enabling me to bridge the gap between hardware implementation and computational analysis.
@@ -26,7 +28,8 @@ Ultimately, I aim to contribute to the advancement of precision instrumentation 
 ![alt text](Images/eduardo_franceschi_headshot.jpg "Eduardo A. Franceschi"){width=130 height=130px}  
 ***Eduardo A. Franceschi**, Aerosapce Engineer*
 
-Email: [eaf4@illinois.ed](mailto:eaf4@illinois.ed)
+Email: [eaf4@illinois.edu](mailto:eaf4@illinois.edu)
+
 LinkedIn: https://www.linkedin.com/in/eduardo-a-franceschi/
 
 I’m a senior in Aerospace Engineering at UIUC (expected Dec 2025), with interests spanning control systems, autonomous robotics, and the computational tools that support modern aerospace design. My technical experience includes state-space modeling, simulation, and applied numerical methods, as well as work across aerodynamics and CFD through both coursework and project teams. I’ve worked hands-on with the Crazyflie drone platform, integrating Python flight code with embedded C controllers and experimenting with real-world behavior through hardware-in-the-loop testing. I’m continually building a better understanding of hardware, sensing, and embedded technologies (CNC) as I aim to deepen my experience with the tools that connect algorithms to real physical systems and enable the next generation of autonomous platforms.
