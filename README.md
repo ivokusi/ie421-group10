@@ -26,7 +26,7 @@ I’m particularly interested in timing systems, frequency stabilization, and re
 Ultimately, I aim to contribute to the advancement of precision instrumentation and ultra-low-latency systems—technologies that define the limits of modern science and finance alike.
 
 ![alt text](Images/eduardo_franceschi_headshot.jpg "Eduardo A. Franceschi"){width=130 height=130px}  
-***Eduardo A. Franceschi**, Aerosapce Engineer*
+***Eduardo A. Franceschi**, Control and Systems Engineer*
 
 Email: [eaf4@illinois.edu](mailto:eaf4@illinois.edu)
 
