@@ -36,6 +36,19 @@ I’m a senior in Aerospace Engineering at UIUC (expected Dec 2025), with intere
 
 Outside of aerospace, I follow quantitative finance, markets, and optimization closely, having worked in market analysis and portfolio research. I’m interested in how optimization and control principles translate across disciplines, from robotic autonomy to portfolio behavior, and how that same mindset can be applied to understanding emerging technologies and the decisions that shape their real-world impact.
 
+![alt text](Images/juanandres_marsano.jpg "Juan Andres Marsano"){width=130 height=130px}  
+***Juan Andres Marsano**, Control and Systems Engineer*
+
+Email: [marsano2@illinois.edu](mailto:marsano2@illinois.edu)
+
+LinkedIn: https://www.linkedin.com/in/juan-andres-marsano-ceballos/
+
+I’m Juan Andrés Marsano, a Systems Engineering student at UIUC (expected December 2026), working at the intersection of systems, control, and data-driven decision-making with a long-term interest in financial engineering.
+
+My background combines modeling and implementation across several domains: supervised learning on real financial datasets for credit-risk style problems, recovery and risk analytics in banking, and process optimization in manufacturing. 
+
+As a co–control systems engineer on this CNC resonator project, I bring that systems-and-data perspective into the control layer: thinking about how variability, dynamics, and timing propagate through the machining and measurement stack, and how control design can be shaped around the performance constraints that matter for high-frequency and latency-sensitive applications. 
+
 ## Installation Instructions
 
 ```bash
