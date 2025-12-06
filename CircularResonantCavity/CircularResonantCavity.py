@@ -11,6 +11,9 @@ import math
 app = adsk.core.Application.get()
 ui  = app.userInterface
 
+handlers = []
+_previewOcc = None
+
 # User input helpers
 
 def get_param_length(units_manager: adsk.core.UnitsManager, prompt: str, title: str, default: str) ->  None | float:
@@ -173,7 +176,7 @@ def extrude_profiles(extrudes: adsk.fusion.ExtrudeFeatures, profiles: adsk.core.
 
     dist = adsk.core.ValueInput.createByReal(distance)
 
-    extrusion = extrudes.createInput(profiles, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+    extrusion = extrudes.createInput(profiles, extrusion_op)
     extrusion.setDistanceExtent(extrusion_is_sym, dist)
     extrudes.add(extrusion)
 
@@ -355,7 +358,7 @@ def run(_context: str):
         profile_collection = adsk.core.ObjectCollection.create()
         profile_collection.add(shield_profile)
 
-        extrude_profiles(extrudes, profile_collection, H)
+        extrude_profiles(extrudes, profile_collection, H, extrusion_op=adsk.fusion.FeatureOperations.JoinFeatureOperation)
         
     except:  #pylint:disable=bare-except
         # Write the error message to the TEXT COMMANDS window.
