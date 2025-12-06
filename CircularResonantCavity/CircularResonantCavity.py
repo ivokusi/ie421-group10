@@ -105,43 +105,43 @@ def get_params(units_manager: adsk.core.UnitsManager) -> list[float | int]:
 
     r = get_param_length(units_manager, "Enter the electrode radius r:", "Electrode Radius", "12.5 mm")
 
-    # if r is None:
-    #     exit(0)
+    if r is None:
+        exit(0)
     
     # Get shield radius
 
     R = get_param_length(units_manager, "Enter the shield radius R:", "Shield Radius", "18 mm")
 
-    # if R is None:
-    #     exit(0)
+    if R is None:
+        exit(0)
     
     # Get electrode width
 
     w = get_param_length(units_manager, "Enter the electrode width w:", "Electrode Width", "3.8 mm")
 
-    # if w is None:
-    #     exit(0)
+    if w is None:
+        exit(0)
 
     # Get shield width
 
     W = get_param_length(units_manager, "Enter the shield width W:", "Shield Width", "5 mm")
 
-    # if W is None:
-    #     exit(0)
+    if W is None:
+        exit(0)
 
     # Get electrode height
 
     h = get_param_length(units_manager, "Enter the electrode height h:", "Electrode Height", "20 mm")
 
-    # if h is None:
-    #     exit(0)
+    if h is None:
+        exit(0)
 
     # Get shield height
 
     H = get_param_length(units_manager, "Enter the shield height H:", "Shield Height", "22.5 mm")
 
-    # if H is None:
-    #     exit(0)
+    if H is None:
+        exit(0)
 
     # Get gap length
 
@@ -154,8 +154,8 @@ def get_params(units_manager: adsk.core.UnitsManager) -> list[float | int]:
 
     n = get_param_quantity("Enter the quantity of gaps n:", "Gap Quantity", "6")
 
-    # if n is None:
-    #     exit(0)
+    if n is None:
+        exit(0)
 
     return [r, R, w, W, h, H, t, n]
 
