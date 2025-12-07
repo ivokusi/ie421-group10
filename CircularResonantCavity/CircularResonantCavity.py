@@ -16,9 +16,10 @@ _previewOcc = None   # for live preview occurrence
 
 def export_to_stl(design):
     """
-    Export ONE STL containing the entire assembly:
-    - solid bodies in the root component
-    - solid bodies in all occurrences
+    Expors 1 STL containing the entire assembly.
+    
+    Args:
+        design: adsk.fusion.Design
     """
     try:
         rootComp = design.rootComponent
