@@ -14,24 +14,72 @@ _previewOcc = None   # for live preview occurrence
 # Geometric helpers
 
 def get_circle_circum(circle):
+
+    """
+    Calculates the circumference of a circle.
+
+    Args:
+        circle: The circle in question.
+
+    Returns:
+        The circumference of the circle.
+    """
     
     r = circle.radius
     
     return 2.0 * math.pi * r
 
 def get_arc_length_theta(arc_length, radius):
+
+    """
+    Calculates the angle of the arc segment.
+
+    Args:
+        arc_length: The segment's arc length.
+        radius: The circle's radius.
+
+    Returns:
+        The angle of the arc segment.
+    """
     
     return arc_length * 360.0 / (2.0 * math.pi * radius)
 
 # Sketch helpers
 
-def reflect_point(points, orig_pt, x=False, y=False, z=False):
+def reflect_point(points, pt, x=False, y=False, z=False):
 
-    new_pt = adsk.core.Point3D.create((-1) ** x * orig_pt.x, (-1) ** y * orig_pt.y, (-1) ** z * orig_pt.z)
+    """
+    Create a reflected copy of a point.
+
+    Args:
+        points: sketch.sketchPoints.
+        pt: The point to reflect.
+        x: Should we mirror across the YZ-plane.
+        y: Should we mirror across the XZ-plane.
+        z: Should we mirror across the XY-plane.
+
+    Returns:
+        The newly created SketchPoint.
+    """
+
+    new_pt = adsk.core.Point3D.create((-1) ** x * pt.x, (-1) ** y * pt.y, (-1) ** z * pt.z)
 
     return points.add(new_pt)
-
+    
 def rotate_entities(geom_cons, center_sk_pt, entities, quantity):
+
+    """
+    Create a circular pattern of sketch or profile entities.
+
+    Args:
+        geom_cons: sketch.geometricConstraints.
+        center_sk_pt: Center of rotation.
+        entities: A list of sketch entities to be patterned
+        quantity: Number of pattern instances to create, distributed evenly over 360 deg.
+
+    Returns:
+        A circular pattern object.
+    """
     
     circular_pattern = geom_cons.createCircularPatternInput(entities, center_sk_pt)
     
@@ -41,6 +89,20 @@ def rotate_entities(geom_cons, center_sk_pt, entities, quantity):
     return geom_cons.addCircularPattern(circular_pattern)
 
 def rotate_point(points, pt, ang_deg, center):
+
+    """
+    Rotate a 3D point around a center in the XY plane.
+
+    The Z coordinate is left unchanged.
+
+    Args:
+        pt: Point to rotate.
+        ang_deg: Rotation angle in degrees, counterclockwise.
+        center: Center of rotation.
+
+    Returns:
+        A new Point3D representing the rotated point.
+    """
     
     theta = math.radians(ang_deg)
     
@@ -55,6 +117,18 @@ def rotate_point(points, pt, ang_deg, center):
     return points.add(new_pt)
 
 def draw_circle(circles, center, radius):
+
+    """
+    Create a sketch circle and fix its center point.
+
+    Args:
+        circles: `sketch.sketchCurves.sketchCircles`.
+        center: The circle's center.
+        radius: Circle radius.
+
+    Returns:
+        A tuple containing the created circle object and its center.
+    """
     
     circle = circles.addByCenterRadius(center, radius)
     circle_center = circle.centerSketchPoint
@@ -66,7 +140,24 @@ def draw_circle(circles, center, radius):
 
 def extrude_profiles(extrudes, profiles, distance, extrusion_is_sym=True, operation=adsk.fusion.FeatureOperations.NewBodyFeatureOperation):
 
-    dist = adsk.core.ValueInput.createByReal(distance)
+    """
+    Creates an extrusion feature from a set of profiles.
+
+    Args:
+        extrudes: comp.features.extrudeFeatures.
+        profiles: A collection of profiles to extrude.
+        distance: Total extrusion distance.
+        extrusion_is_sym: Should extrude along both direction.
+        operation: Extrusion operation type.
+
+    Returns:
+        The created ExtrudeFeature object.
+    """
+
+    # Adjust distance if extrusion_is_sym=True
+    modified_distance = distance / (2 ** extrusion_is_sym) 
+
+    dist = adsk.core.ValueInput.createByReal(modified_distance)
     ext_input = extrudes.createInput(profiles, operation)
     ext_input.setDistanceExtent(extrusion_is_sym, dist)
     
@@ -75,6 +166,20 @@ def extrude_profiles(extrudes, profiles, distance, extrusion_is_sym=True, operat
 # Main
 
 def build(comp, r, R, w, W, h, H, t, n):
+
+    """
+    Create model of the circular resonant cavity based on the user defined parameters
+
+    Args:
+        r: Electrode radius
+        R: Shield radius
+        w: Electrode width
+        W: Shield width
+        h: Electrode height
+        H: Shield height
+        t: Gap length
+        n: Gap quantity (integer)
+    """
 
     # Create sketch
     
@@ -153,8 +258,13 @@ def build(comp, r, R, w, W, h, H, t, n):
         x, y   = centroid.x, centroid.y
         radius = math.sqrt(x * x + y * y)
 
+        # Find electrode profile
         if (gap_area < area) and (r < radius < r + w):
-            
+
+            # Add spruce
+
+            # Add spruce endpoints
+
             pos_rot1_sk = rotate_point(points, centroid, int(spruce_half_angle), center)
             pos_rot2_sk = rotate_point(points, centroid, int(spruce_half_angle), center)
 
@@ -167,10 +277,16 @@ def build(comp, r, R, w, W, h, H, t, n):
             geom_cons.addCoincident(neg_rot1_sk, c2)
             geom_cons.addCoincident(neg_rot2_sk, c3)
 
+            # Draw lines between endpoints to create closed profile for spruce
+
             l3 = lines.addByTwoPoints(pos_rot1_sk, pos_rot2_sk)
             l4 = lines.addByTwoPoints(neg_rot1_sk, neg_rot2_sk)
 
+            # Rotate sketch entities to add spruce to all electrode profiles
+
             rotate_entities(geom_cons, center_sk, [l3, l4], n)
+
+            break
 
     # Spruce profile condition
 
@@ -231,6 +347,24 @@ def build(comp, r, R, w, W, h, H, t, n):
     extrude_profiles(extrudes, profile_collection, H, operation=adsk.fusion.FeatureOperations.JoinFeatureOperation)
 
 def _read_params_from_inputs(inputs):
+
+    """
+    Extract parameters.
+
+    Args:
+        inputs: cmd.commandInputs.
+
+    Returns:
+        A tuple `(r, R, w, W, h, H, t, n)` where:
+            r: Electrode radius.
+            R: Shield radius.
+            w: Electrode width.
+            W: Shield width.
+            h: Electrode height.
+            H: Shield height.
+            t: Gap length.
+            n: Gap quantity (integer).
+    """
     
     r = inputs.itemById("r").value
     R = inputs.itemById("R").value
