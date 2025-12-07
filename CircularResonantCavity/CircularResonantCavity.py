@@ -12,6 +12,49 @@ _ui  = None
 _handlers = []
 _previewOcc = None   # for live preview occurrence
 
+# Exportation helper:
+
+def export_to_stl(design):
+    """
+    Export ONE STL containing the entire assembly:
+    - solid bodies in the root component
+    - solid bodies in all occurrences
+    """
+    try:
+        rootComp = design.rootComponent
+        exportMgr = design.exportManager
+
+        if rootComp.bRepBodies.count == 0 and rootComp.occurrences.count == 0:
+            _ui.messageBox('No geometry found in root component.', 'Export assembly STL')
+            return
+
+        # Ask user where to save the STL
+        dlg = _ui.createFileDialog()
+        dlg.isFolderDialog = False
+        dlg.title = 'Save STL for entire assembly'
+        dlg.filter = 'STL files (*.stl)'
+        default_name = rootComp.name.replace(' ', '_') + '.stl'
+        dlg.initialFilename = default_name
+
+        if dlg.showSave() != adsk.core.DialogResults.DialogOK:
+            return
+
+        out_path = dlg.filename
+
+        # pass rootComp instead of a bodies collection
+        stlOptions = exportMgr.createSTLExportOptions(rootComp, out_path)
+        stlOptions.meshRefinement = adsk.fusion.MeshRefinementSettings.MeshRefinementHigh
+        stlOptions.sendToPrintUtility = False
+
+        exportMgr.execute(stlOptions)
+
+        _ui.messageBox(f'Assembly exported as STL:\n{out_path}', 'Export assembly STL')
+
+    except:
+        if _ui:
+            _ui.messageBox('Failed to export STL:\n{}'.format(traceback.format_exc()))
+
+
 # Geometric helpers
 
 def get_circle_circum(circle):
@@ -163,60 +206,6 @@ def extrude_profiles(extrudes, profiles, distance, extrusion_is_sym=True, operat
     ext_input.setDistanceExtent(extrusion_is_sym, dist)
     
     return extrudes.add(ext_input)
-
-# Exportation helper:
-
-def export_to_stl(ui, design):
-    
-    try:
-    
-        exportMgr = design.exportManager
-       
-        # Asking for a targeted path
-        dlg = ui.createFileDialog()
-        dlg.isFolderDialog = True
-        dlg.title = 'Choose folder to save STL files'
-        dlg.initialDirectory = os.path.expanduser('~')
-        
-        if dlg.showSave() != adsk.core.DialogResults.DialogOK:
-            return
-        
-        # Got path
-        out_dir = dlg.filename
-
-        allComps = design.allComponents
-
-        exported = 0
-
-        for comp in allComps:
-            bodies = adsk.core.ObjectCollection.create()
-
-            for b in comp.bRepBodies:
-                # Only export solid, visible bodies
-                if not b.isSolid:
-                    continue
-                if hasattr(b, 'isVisible') and not b.isVisible:
-                    continue
-                bodies.add(b)
-
-            if bodies.count == 0:
-                continue
-
-            comp_name = comp.name.replace(' ', '_')
-            out_path = os.path.join(out_dir, f'{comp_name}.stl')
-
-            stlOptions = exportMgr.createSTLExportOptions(bodies, out_path)
-            stlOptions.meshRefinement = adsk.fusion.MeshRefinementSettings.MeshRefinementHigh
-            stlOptions.sendToPrintUtility = False
-
-            exportMgr.execute(stlOptions)
-            exported += 1
-
-        ui.messageBox(f'Exported {exported} STL file(s) to:\n{out_dir}', 'Export all components')
-
-    except:
-        if ui:
-            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 # Main
 
@@ -440,6 +429,17 @@ class CavityDestroyHandler(adsk.core.CommandEventHandler):
     def notify(self, args):
         
         try:
+            # We only care about the case where user clicked OK
+            cmdArgs = adsk.core.CommandEventArgs.cast(args)
+            term = cmdArgs.terminationReason
+
+            if term == adsk.core.CommandTerminationReason.CompletedTerminationReason:
+                # Command finished successfully via OK
+                design = adsk.fusion.Design.cast(_app.activeProduct)
+                if design:
+                    export_to_stl(design)
+
+            # terminate
             adsk.terminate()
         except:
             if _ui:
@@ -462,15 +462,15 @@ class CavityExecuteHandler(adsk.core.CommandEventHandler):
             root_comp = design.rootComponent
             cmd = adsk.core.Command.cast(args.command)
             inputs = cmd.commandInputs
-
+            
             r, R, w, W, h, H, t, n = _read_params_from_inputs(inputs)
-
+            
             # If preview already created geometry, we can just keep it.
             # If for some reason preview was off, build once here.
             
             if _previewOcc is None or not _previewOcc.isValid:
                 build(root_comp, r, R, w, W, h, H, t, n)
-                export_to_stl(_ui, design)
+
 
         except:
             if _ui:
@@ -494,7 +494,7 @@ class CavityExecutePreviewHandler(adsk.core.CommandEventHandler):
             root_comp = design.rootComponent
             cmd = adsk.core.Command.cast(args.command)
             inputs = cmd.commandInputs
-
+            
             r, R, w, W, h, H, t, n = _read_params_from_inputs(inputs)
 
             # Delete previous preview occurrence if it exists
@@ -508,15 +508,14 @@ class CavityExecutePreviewHandler(adsk.core.CommandEventHandler):
             occs = root_comp.occurrences
             new_occ = occs.addNewComponent(adsk.core.Matrix3D.create())
             comp = new_occ.component
-
+            
             build(comp, r, R, w, W, h, H, t, n)
-
+            
             _previewOcc = new_occ
 
             # Tell Fusion this preview is good enough to keep if user hits OK
-
             args.isValidResult = True
-
+            
         except:
             if _ui:
                 _ui.messageBox("Preview failed:\n{}".format(traceback.format_exc()))
