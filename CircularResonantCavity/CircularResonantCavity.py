@@ -5,6 +5,7 @@ import adsk.core # type: ignore
 import adsk.fusion # type: ignore
 
 import math
+import os
 
 _app = None
 _ui  = None
@@ -162,6 +163,56 @@ def extrude_profiles(extrudes, profiles, distance, extrusion_is_sym=True, operat
     ext_input.setDistanceExtent(extrusion_is_sym, dist)
     
     return extrudes.add(ext_input)
+
+# Exportation helper:
+
+def export_to_stl(ui, design):
+    try:
+        exportMgr = design.exportManager
+        # Asking for a targeted path
+        dlg = ui.createFileDialog()
+        dlg.isFolderDialog = True
+        dlg.title = 'Choose folder to save STL files'
+        dlg.initialDirectory = os.path.expanduser('~')
+        if dlg.showSave() != adsk.core.DialogResults.DialogOK:
+            return
+        
+        # Got path
+        out_dir = dlg.filename
+
+        allComps = design.allComponents
+
+        exported = 0
+
+        for comp in allComps:
+            bodies = adsk.core.ObjectCollection.create()
+
+            for b in comp.bRepBodies:
+                # Only export solid, visible bodies
+                if not b.isSolid:
+                    continue
+                if hasattr(b, 'isVisible') and not b.isVisible:
+                    continue
+                bodies.add(b)
+
+            if bodies.count == 0:
+                continue
+
+            comp_name = comp.name.replace(' ', '_')
+            out_path = os.path.join(out_dir, f'{comp_name}.stl')
+
+            stlOptions = exportMgr.createSTLExportOptions(bodies, out_path)
+            stlOptions.meshRefinement = adsk.fusion.MeshRefinementSettings.MeshRefinementHigh
+            stlOptions.sendToPrintUtility = False
+
+            exportMgr.execute(stlOptions)
+            exported += 1
+
+        ui.messageBox(f'Exported {exported} STL file(s) to:\n{out_dir}', 'Export all components')
+
+    except:
+        if ui:
+            ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 # Main
 
@@ -415,6 +466,7 @@ class CavityExecuteHandler(adsk.core.CommandEventHandler):
             
             if _previewOcc is None or not _previewOcc.isValid:
                 build(root_comp, r, R, w, W, h, H, t, n)
+                export_to_stl(_ui, design)
 
         except:
             if _ui:
