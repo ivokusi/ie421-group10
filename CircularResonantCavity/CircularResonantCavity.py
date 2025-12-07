@@ -5,7 +5,6 @@ import adsk.core # type: ignore
 import adsk.fusion # type: ignore
 
 import math
-import os
 
 _app = None
 _ui  = None
@@ -15,13 +14,16 @@ _previewOcc = None   # for live preview occurrence
 # Exportation helper:
 
 def export_to_stl(design):
+    
     """
-    Expors 1 STL containing the entire assembly.
+    Exports an STL file containing the entire assembly.
     
     Args:
         design: adsk.fusion.Design
     """
+
     try:
+        
         rootComp = design.rootComponent
         exportMgr = design.exportManager
 
@@ -54,7 +56,6 @@ def export_to_stl(design):
     except:
         if _ui:
             _ui.messageBox('Failed to export STL:\n{}'.format(traceback.format_exc()))
-
 
 # Geometric helpers
 
