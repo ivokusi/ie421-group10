@@ -167,13 +167,17 @@ def extrude_profiles(extrudes, profiles, distance, extrusion_is_sym=True, operat
 # Exportation helper:
 
 def export_to_stl(ui, design):
+    
     try:
+    
         exportMgr = design.exportManager
+       
         # Asking for a targeted path
         dlg = ui.createFileDialog()
         dlg.isFolderDialog = True
         dlg.title = 'Choose folder to save STL files'
         dlg.initialDirectory = os.path.expanduser('~')
+        
         if dlg.showSave() != adsk.core.DialogResults.DialogOK:
             return
         
@@ -561,7 +565,6 @@ class CavityCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
         except:
             if _ui:
                 _ui.messageBox("CommandCreated failed:\n{}".format(traceback.format_exc()))
-
 
 def run(context):
     
