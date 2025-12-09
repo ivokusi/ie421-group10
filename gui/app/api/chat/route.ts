@@ -2,6 +2,9 @@ import { openai } from "@ai-sdk/openai";
 import { AssistantModelMessage, streamText } from "ai";
 
 export const maxDuration = 30;
+export const config = { 
+  runtime: "edge", 
+};
 
 export async function POST(req: Request) {
   const { messages }: { messages: AssistantModelMessage[] } = await req.json();
