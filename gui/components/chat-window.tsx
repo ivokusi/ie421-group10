@@ -70,20 +70,65 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
         throw new Error("Failed to get response");
       }
   
-      // ⬇️ Plain JSON instead of streaming
-      const data = await response.json();
+      // 👇 STREAMING INSTEAD OF response.json()
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage = "";
+      const assistantId = `assistant-${Date.now()}`;
   
-      // OpenAI chat completion shape:
-      // data.choices[0].message.content
-      const assistantText = data.choices?.[0]?.message?.content ?? "";
+      if (reader) {
+        let buffer = "";
   
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: assistantText,
-      };
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
   
-      setMessages((prev) => [...prev, assistantMessage]);
+          buffer += decoder.decode(value, { stream: true });
+  
+          // Process line-by-line
+          let newlineIndex: number;
+          while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+            const line = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
+  
+            if (!line || !line.startsWith("data:")) continue;
+  
+            const jsonStr = line.slice(5).trim(); // remove "data:"
+  
+            if (jsonStr === "[DONE]") {
+              console.log("Stream finished");
+              break;
+            }
+  
+            try {
+              const parsed = JSON.parse(jsonStr);
+  
+              // OpenAI stream: choices[0].delta.content
+              const delta = parsed.choices?.[0]?.delta?.content ?? "";
+  
+              if (delta) {
+                assistantMessage += delta;
+  
+                setMessages((prev) => {
+                  const filtered = prev.filter((m) => m.id !== assistantId);
+                  return [
+                    ...filtered,
+                    {
+                      id: assistantId,
+                      role: "assistant",
+                      content: assistantMessage,
+                    },
+                  ];
+                });
+              }
+            } catch (err) {
+              console.error("Failed to parse SSE line:", line, err);
+            }
+          }
+        }
+      }
+  
+      console.log("Final assistant message:", assistantMessage);
     } catch (error) {
       console.error("Chat error:", error);
       setMessages((prev) => [
@@ -97,7 +142,7 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
     } finally {
       setIsLoading(false);
     }
-  };  
+  };    
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

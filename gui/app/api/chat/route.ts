@@ -16,24 +16,28 @@ export async function POST(req: Request) {
 
     const { messages } = await req.json();
 
-    const openaiRequestBody = {
-      model: "gpt-4.1-mini", // or "gpt-4o-mini" if that's what you want
-      messages,
-    };
+    const openaiRes = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4.1-mini",  // or "gpt-4o-mini"
+          messages,
+          stream: true,           // 👈 TURN ON STREAMING
+        }),
+      }
+    );
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(openaiRequestBody),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
+    if (!openaiRes.ok || !openaiRes.body) {
+      const text = await openaiRes.text();
       return new Response(
-        JSON.stringify({ error: `OpenAI error ${res.status}: ${text}` }),
+        JSON.stringify({
+          error: `OpenAI error ${openaiRes.status}: ${text}`,
+        }),
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
@@ -41,11 +45,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const data = await res.json();
-
-    return new Response(JSON.stringify(data), {
+    // 👇 Proxy OpenAI's SSE stream directly to the client
+    return new Response(openaiRes.body, {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
     });
   } catch (err: any) {
     const message =
