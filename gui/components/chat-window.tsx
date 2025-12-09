@@ -1,0 +1,216 @@
+"use client"
+
+import type React from "react"
+import { Send, Bot, User } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { useEffect, useRef, useState } from "react"
+import { cn } from "@/lib/utils"
+
+interface Message {
+  id: string
+  role: "user" | "assistant"
+  content: string
+}
+
+interface ChatWindowProps {
+  chatId: string
+  onUpdateTitle: (id: string, title: string) => void
+}
+
+export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
+  const [input, setInput] = useState("")
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [hasSetTitle, setHasSetTitle] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  useEffect(() => {
+    if (!hasSetTitle && messages.length > 0 && messages[0].role === "user") {
+      const title = messages[0].content.slice(0, 50)
+      onUpdateTitle(chatId, title)
+      setHasSetTitle(true)
+    }
+  }, [messages, chatId, onUpdateTitle, hasSetTitle])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: input,
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    setInput("")
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map((m) => ({
+            role: m.role,
+            parts: [{ type: "text", text: m.content }],
+          })),
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to get response")
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let assistantMessage = ""
+      const assistantId = `assistant-${Date.now()}`
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value)
+          const lines = chunk.split("\n")
+
+          for (const line of lines) {
+            if (line.startsWith("0:")) {
+              try {
+                const jsonStr = line.slice(2)
+                const parsed = JSON.parse(jsonStr)
+                if (parsed.parts) {
+                  for (const part of parsed.parts) {
+                    if (part.type === "text") {
+                      assistantMessage += part.text
+                      setMessages((prev) => {
+                        const filtered = prev.filter((m) => m.id !== assistantId)
+                        return [...filtered, { id: assistantId, role: "assistant", content: assistantMessage }]
+                      })
+                    }
+                  }
+                }
+              } catch (e) {
+                console.log("[v0] Skipping invalid JSON chunk")
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[v0] Chat error:", error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: "Sorry, I encountered an error. Please try again.",
+        },
+      ])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit(e)
+    }
+  }
+
+  return (
+    <div className="flex flex-1 flex-col">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          {messages.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="text-center">
+                <Bot className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+                <h2 className="mb-2 font-semibold text-2xl text-foreground">Start a conversation</h2>
+                <p className="text-muted-foreground">Ask me anything and I'll do my best to help!</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn("flex gap-4", message.role === "user" ? "justify-end" : "justify-start")}
+                >
+                  {message.role === "assistant" && (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
+                      <Bot className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      "max-w-[80%] rounded-2xl px-4 py-3",
+                      message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  </div>
+                  {message.role === "user" && (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent">
+                      <User className="h-5 w-5 text-accent-foreground" />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex gap-4">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
+                    <Bot className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div className="flex items-center gap-1 rounded-2xl bg-muted px-4 py-3">
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-foreground [animation-delay:-0.3s]"></div>
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-foreground [animation-delay:-0.15s]"></div>
+                    <div className="h-2 w-2 animate-bounce rounded-full bg-foreground"></div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Input Area */}
+      <div className="border-t border-border bg-card">
+        <div className="mx-auto max-w-3xl px-4 py-4">
+          <form onSubmit={handleSubmit} className="flex gap-3">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message..."
+              className="min-h-[60px] max-h-32 resize-none bg-background"
+              disabled={isLoading}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              className="h-[60px] w-[60px] shrink-0"
+              disabled={!input.trim() || isLoading}
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          </form>
+          <p className="mt-2 text-center text-muted-foreground text-xs">
+            Press Enter to send, Shift + Enter for new line
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
