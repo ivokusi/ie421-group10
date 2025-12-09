@@ -20,7 +20,9 @@ export async function POST(req: Request) {
     });
 
     return result.toUIMessageStreamResponse();
+
   } catch (err: any) {
+    
     console.error("Error in /api/chat:", err);
 
     const message =
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
+    
   }
 
 }
