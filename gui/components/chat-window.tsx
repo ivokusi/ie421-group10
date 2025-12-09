@@ -56,18 +56,19 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
     setIsLoading(true)
 
     try {
+      console.log("Sending messages to API")
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map((m) => ({
-            role: m.role,
-            parts: [{ type: "text", text: m.content }],
-          })),
+          messages: [...messages, userMessage],
         }),
       })
 
-      if (!response.ok) throw new Error("Failed to get response")
+      if (!response.ok) {
+        throw new Error("Failed to get response")
+      }
 
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
@@ -79,34 +80,40 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
           const { done, value } = await reader.read()
           if (done) break
 
-          const chunk = decoder.decode(value)
+          const chunk = decoder.decode(value, { stream: true })
           const lines = chunk.split("\n")
 
           for (const line of lines) {
-            if (line.startsWith("0:")) {
-              try {
-                const jsonStr = line.slice(2)
-                const parsed = JSON.parse(jsonStr)
-                if (parsed.parts) {
-                  for (const part of parsed.parts) {
-                    if (part.type === "text") {
-                      assistantMessage += part.text
-                      setMessages((prev) => {
-                        const filtered = prev.filter((m) => m.id !== assistantId)
-                        return [...filtered, { id: assistantId, role: "assistant", content: assistantMessage }]
-                      })
-                    }
-                  }
-                }
-              } catch (e) {
-                console.log("[v0] Skipping invalid JSON chunk")
+            if (!line.trim() || !line.startsWith("data: ")) continue
+
+            try {
+              const jsonStr = line.slice(6).trim() // Remove "data: " prefix
+              if (jsonStr === "[DONE]") {
+                console.log("Stream finished")
+                continue
               }
+              const parsed = JSON.parse(jsonStr)
+
+              console.log("Parsed chunk:", parsed)
+
+              if (parsed.type === "text-delta" && parsed.delta) {
+                assistantMessage += parsed.delta
+
+                setMessages((prev) => {
+                  const filtered = prev.filter((m) => m.id !== assistantId)
+                  return [...filtered, { id: assistantId, role: "assistant", content: assistantMessage }]
+                })
+              }
+            } catch (e) {
+              console.error("Failed to parse line:", line, e)
             }
           }
         }
       }
+
+      console.log("Final assistant message:", assistantMessage)
     } catch (error) {
-      console.error("[v0] Chat error:", error)
+      console.error("Chat error:", error)
       setMessages((prev) => [
         ...prev,
         {
