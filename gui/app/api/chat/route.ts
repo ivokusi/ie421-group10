@@ -1,30 +1,53 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { AssistantModelMessage, streamText } from "ai";
-
 export const runtime = "edge";
 export const maxDuration = 30;
 
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY!, 
-});
-
 export async function POST(req: Request) {
-  
   try {
-    const { messages }: { messages: AssistantModelMessage[] } = await req.json();
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: "Missing OPENAI_API_KEY" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
-    const result = streamText({
-      model: openai("gpt-4o-mini"),
+    const { messages } = await req.json();
+
+    const openaiRequestBody = {
+      model: "gpt-4.1-mini", // or "gpt-4o-mini" if that's what you want
       messages,
-      abortSignal: req.signal,
+    };
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(openaiRequestBody),
     });
 
-    return result.toUIMessageStreamResponse();
+    if (!res.ok) {
+      const text = await res.text();
+      return new Response(
+        JSON.stringify({ error: `OpenAI error ${res.status}: ${text}` }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
+    const data = await res.json();
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (err: any) {
-    
-    console.error("Error in /api/chat:", err);
-
     const message =
       err instanceof Error ? err.message : JSON.stringify(err);
 
@@ -32,7 +55,5 @@ export async function POST(req: Request) {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
-    
   }
-
 }

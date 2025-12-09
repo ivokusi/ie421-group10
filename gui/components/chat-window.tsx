@@ -42,77 +42,50 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
   }, [messages, chatId, onUpdateTitle, hasSetTitle])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
-
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+  
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
       content: input,
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setIsLoading(true)
-
+    };
+  
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+  
     try {
-      
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...messages, userMessage],
         }),
-      })
-
+      });
+  
       if (!response.ok) {
-        throw new Error("Failed to get response")
+        const errorText = await response.text();
+        console.error("API error:", errorText);
+        throw new Error("Failed to get response");
       }
-
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let assistantMessage = ""
-      const assistantId = `assistant-${Date.now()}`
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          const chunk = decoder.decode(value, { stream: true })
-          const lines = chunk.split("\n")
-
-          for (const line of lines) {
-            if (!line.trim() || !line.startsWith("data: ")) continue
-
-            try {
-              const jsonStr = line.slice(6).trim() // Remove "data: " prefix
-              if (jsonStr === "[DONE]") {
-                console.log("Stream finished")
-                continue
-              }
-              const parsed = JSON.parse(jsonStr)
-
-              console.log("Parsed chunk:", parsed)
-
-              if (parsed.type === "text-delta" && parsed.delta) {
-                assistantMessage += parsed.delta
-
-                setMessages((prev) => {
-                  const filtered = prev.filter((m) => m.id !== assistantId)
-                  return [...filtered, { id: assistantId, role: "assistant", content: assistantMessage }]
-                })
-              }
-            } catch (e) {
-              console.error("Failed to parse line:", line, e)
-            }
-          }
-        }
-      }
-
-      console.log("Final assistant message:", assistantMessage)
+  
+      // ⬇️ Plain JSON instead of streaming
+      const data = await response.json();
+  
+      // OpenAI chat completion shape:
+      // data.choices[0].message.content
+      const assistantText = data.choices?.[0]?.message?.content ?? "";
+  
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: assistantText,
+      };
+  
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("Chat error:", error)
+      console.error("Chat error:", error);
       setMessages((prev) => [
         ...prev,
         {
@@ -120,11 +93,11 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
           role: "assistant",
           content: "Sorry, I encountered an error. Please try again.",
         },
-      ])
+      ]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };  
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
