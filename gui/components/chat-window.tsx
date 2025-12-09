@@ -56,8 +56,7 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
     setIsLoading(true)
 
     try {
-      console.log("Sending messages to API")
-
+      
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
