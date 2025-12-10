@@ -1,42 +1,166 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
+from requests.api import get
+from dotenv import load_dotenv
+from pinecone import Pinecone
+from openai import OpenAI
 import requests
+import math
+import os
+import re
 
-def get_leafs(content, leafs):
+load_dotenv()
+
+openai = OpenAI()
+
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+pc = Pinecone(api_key=PINECONE_API_KEY)
+index = pc.Index("ie421-group10")
+
+objects_arr = []
+object_attrs_arr = []
+
+def get_embeddings(texts):
+
+    response = openai.embeddings.create(
+        model="text-embedding-3-small",  # 1536 dims
+        input=texts
+    )
+
+    embeddings = [d.embedding for d in response.data]
+    return embeddings
+
+def format_object_embedding(class_name, desc):
+
+    text = f"""
+    className: {class_name}
+    description: {desc}
+    """
+
+    metadata = {
+        "className": class_name,
+        "text": text
+    }
+
+    id = class_name
+
+    return text, metadata, id
+
+def add_object_embeddings():
+
+    global objects_arr
+
+    num_batches = math.ceil(len(objects_arr) / 100)
+    for i in range(0, len(objects_arr), 100):
+
+        print(f"[Processing] batch {i // 100}/{num_batches}")
+        
+        batch = objects_arr[i:i+100]
+        texts = [text for (text, _, _) in batch]
+
+        embeddings = get_embeddings(texts)
+
+        vectors = [{ "id": id, "values": embedding, "metadata": metadata } for (_, metadata, id), embedding in zip(batch, embeddings)]
+
+        index.upsert(
+            vectors=vectors,
+            namespace="objects"
+        )
+
+def get_object(suffix):
+
+    global objects_arr
+
+    url = f"https://help.autodesk.com{suffix}"
+
+    rsp = requests.get(url)
+    rsp.raise_for_status()
+
+    soup = BeautifulSoup(rsp.text, "html.parser")
+
+    # print(soup.prettify())
+
+    object = soup.find("meta", attrs={"name": "contextid"})
+    object_name = object.get("content")
+
+    print(f"[Extarcting] {object_name}")
+
+    desc_h2 = soup.select_one("h2.api")
+
+    parts = []
+
+    for el in desc_h2.next_elements:
+
+        if isinstance(el, Tag) and el.name == "h2" and "api" in (el.get("class") or []):
+            break
+
+        if isinstance(el, NavigableString):
+            
+            text = el.strip()
+            
+            if text:
+                parts.append(text)
+
+    desc = " ".join(parts)
+    
+    res = format_object_embedding(object_name, desc)
+    objects_arr.append(res)
+
+def get_object_attr(suffix):
+
+    global object_attrs_arr
+
+    url = f"https://help.autodesk.com{suffix}"
+
+    rsp = requests.get(url)
+    rsp.raise_for_status()
+
+    soup = BeautifulSoup(rsp.text, "html.parser")
+
+    print(soup.prettify())
+
+    # Description
+    
+
+    # Syntax
+
+    # Return Value
+
+    # Parameters
+
+
+def get_objects(content):
 
     if "children" in content:
-
-        for child in content["children"]:
-            
-            leafs = get_leafs(child, leafs)
-
-    else:
         
-        leafs.append((content["ttl"], content["ln"]))
+        suffix = content["ln"]
 
-    return leafs
+        if suffix != "":
+            get_object(suffix)
+        
+        for child in content["children"]:
+            get_objects(child)
 
 if __name__ == "__main__":
 
     # Hidden API 
 
-    url = "https://help.autodesk.com/view/fusion360/ENU/data/toctree.json"
+    # url = "https://help.autodesk.com/view/fusion360/ENU/data/toctree.json"
 
-    # Returns sidebar elements and their nested children
-    # Each (leaf) children has property ln which is a relative link to its docs
+    # # Returns sidebar elements and their nested children
+    # # Each (leaf) children has property ln which is a relative link to its docs
 
-    rsp = requests.get(url)
-
-    json_content = rsp.json()
-    leafs = format(json_content["books"][20])
-
-    print(leafs)
-
-    # url = "https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/MaterialSample_Sample.htm"
-    
     # rsp = requests.get(url)
-    # rsp.raise_for_status()
+    # json_content = rsp.json()
 
-    # soup = BeautifulSoup(rsp.text, "html.parser")
+    # objects = json_content["books"][20]["children"][3]["children"][0]
 
-    # print(soup.title)
-    # print(soup.title.get_text())
+    # get_objects(objects)
+    # add_object_embeddings()
+
+    # enums = json_content["books"][20]["children"][3]["children"][1]
+    # samples = json_content["books"][20]["children"][4]
+
+    url = "/cloudhelp/ENU/Fusion-360-API/files/AccessibilityAnalyses_count.htm"
+    # url = "/cloudhelp/ENU/Fusion-360-API/files/ActiveSelectionEvent.htm"
+
+    get_object_attr(url)

@@ -1,0 +1,4 @@
+[Extarcting] AccessibilityAnalyses
+[Extarcting] AccessibilityAnalysis
+[Extarcting] ActiveSelectionEvent
+[Extarcting] ActiveSelectionEventArgs
