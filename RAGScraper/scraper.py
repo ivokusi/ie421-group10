@@ -87,7 +87,6 @@ def get_object(suffix):
     desc_h2 = soup.select_one("h2.api")
 
     parts = []
-
     for el in desc_h2.next_elements:
 
         if isinstance(el, Tag) and el.name == "h2" and "api" in (el.get("class") or []):
@@ -119,13 +118,59 @@ def get_object_attr(suffix):
     print(soup.prettify())
 
     # Description
-    
+    description = soup.select_one("p.api").contents[0]
 
     # Syntax
+    python_div = soup.select_one("div#Python")
 
+    var_context = python_div.select_one("td")
+
+    var_context_text = None
+    for child in var_context.children:
+        if isinstance(child, NavigableString):
+            text = child.strip()
+            if text:
+                var_context_text = text
+                break
+
+    code = python_div.select_one("pre.api-code")
+    
+    pieces = []
+    for node in code.descendants:
+        
+        if isinstance(node, Tag) and node.name == "br":
+            pieces.append("\n")
+        
+        elif isinstance(node, NavigableString):
+            
+            text = str(node).replace("\n", "")
+            
+            if text:
+                pieces.append(text)
+
+    code_text = "".join(pieces).strip()
+    
     # Return Value
 
+
+
     # Parameters
+
+    params_h2 = soup.find("h2", class_="api", string=re.compile(r"\s*Property Value\s*"))
+
+    type = None
+    for el in params_h2.next_elements:
+        
+        if isinstance(el, NavigableString):
+            
+            text = el.strip()
+            match = re.match(r"This is a (read|write|read/write) property whose value is a (.+)\.", text)
+            
+            if match:
+                type = match.group(2)  
+                break      
+
+    print(type)
 
 
 def get_objects(content):
@@ -160,7 +205,7 @@ if __name__ == "__main__":
     # enums = json_content["books"][20]["children"][3]["children"][1]
     # samples = json_content["books"][20]["children"][4]
 
-    url = "/cloudhelp/ENU/Fusion-360-API/files/AccessibilityAnalyses_count.htm"
+    url = "/cloudhelp/ENU/Fusion-360-API/files/AdditiveFFFLimitsMachineElement_maximumXYSpeed.htm"
     # url = "/cloudhelp/ENU/Fusion-360-API/files/ActiveSelectionEvent.htm"
 
     get_object_attr(url)
