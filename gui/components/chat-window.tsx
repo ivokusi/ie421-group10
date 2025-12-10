@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface Message {
   id: string
@@ -22,8 +23,42 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
   const [input, setInput] = useState("")
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true)
   const [hasSetTitle, setHasSetTitle] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    loadMessages()
+  }, [chatId])
+
+  const loadMessages = async () => {
+    const supabase = createClient()
+    setIsLoadingMessages(true)
+
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", chatId)
+        .order("created_at", { ascending: true })
+
+      if (error) throw error
+
+      const loadedMessages: Message[] =
+        data?.map((msg) => ({
+          id: msg.id,
+          role: msg.role as "user" | "assistant",
+          content: msg.content,
+        })) || []
+
+      setMessages(loadedMessages)
+      setHasSetTitle(loadedMessages.length > 0)
+    } catch (error) {
+      console.error("Error loading messages:", error)
+    } finally {
+      setIsLoadingMessages(false)
+    }
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -41,96 +76,131 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
     }
   }, [messages, chatId, onUpdateTitle, hasSetTitle])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-  
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: input,
-    };
-  
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-  
+  const saveMessageToDb = async (role: "user" | "assistant", content: string) => {
+    const supabase = createClient()
+
     try {
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: chatId,
+          role,
+          content,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data.id
+    } catch (error) {
+      console.error("Error saving message:", error)
+      return `temp-${Date.now()}`
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const userContent = input
+    setInput("")
+    setIsLoading(true)
+
+    const userMessageId = await saveMessageToDb("user", userContent)
+
+    const userMessage: Message = {
+      id: userMessageId,
+      role: "user",
+      content: userContent,
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+
+    try {
+      console.log("Sending messages to API")
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...messages, userMessage],
         }),
-      });
-  
+      })
+
+      console.log("Response status:", response.status)
+      console.log("Response headers:", Object.fromEntries(response.headers.entries()))
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API error:", errorText);
-        throw new Error("Failed to get response");
+        throw new Error("Failed to get response")
       }
-  
-      // 👇 STREAMING INSTEAD OF response.json()
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantMessage = "";
-      const assistantId = `assistant-${Date.now()}`;
-  
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let assistantMessage = ""
+      const assistantId = `assistant-${Date.now()}`
+      const chunkCount = 0
+      let buffer = ""
+
       if (reader) {
-        let buffer = "";
-  
         while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-  
-          buffer += decoder.decode(value, { stream: true });
-  
-          // Process line-by-line
-          let newlineIndex: number;
-          while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
-            const line = buffer.slice(0, newlineIndex).trim();
-            buffer = buffer.slice(newlineIndex + 1);
-  
-            if (!line || !line.startsWith("data:")) continue;
-  
-            const jsonStr = line.slice(5).trim(); // remove "data:"
-  
-            if (jsonStr === "[DONE]") {
-              console.log("Stream finished");
-              break;
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value, { stream: true })
+          buffer += chunk
+
+          const lines = buffer.split("\n")
+          buffer = lines.pop() || ""
+
+          for (const line of lines) {
+            if (!line.trim()) continue
+
+            if (!line.startsWith("data: ")) {
+              continue
             }
-  
+
+            const jsonStr = line.slice(6).trim()
+
+            if (jsonStr === "[DONE]") {
+              continue
+            }
+
             try {
-              const parsed = JSON.parse(jsonStr);
-  
-              // OpenAI stream: choices[0].delta.content
-              const delta = parsed.choices?.[0]?.delta?.content ?? "";
-  
-              if (delta) {
-                assistantMessage += delta;
-  
-                setMessages((prev) => {
-                  const filtered = prev.filter((m) => m.id !== assistantId);
-                  return [
-                    ...filtered,
-                    {
-                      id: assistantId,
-                      role: "assistant",
-                      content: assistantMessage,
-                    },
-                  ];
-                });
+              const parsed = JSON.parse(jsonStr)
+
+              let deltaText = ""
+
+              if (parsed.type === "text-delta" && parsed.delta) {
+                deltaText = parsed.delta
+              } else if (parsed.object === "chat.completion.chunk" && parsed.choices?.[0]?.delta?.content) {
+                deltaText = parsed.choices[0].delta.content
               }
-            } catch (err) {
-              console.error("Failed to parse SSE line:", line, err);
+
+              if (deltaText) {
+                assistantMessage += deltaText
+
+                setMessages((prev) => {
+                  const filtered = prev.filter((m) => m.id !== assistantId)
+                  return [...filtered, { id: assistantId, role: "assistant", content: assistantMessage }]
+                })
+              }
+            } catch (e) {
+              continue
             }
           }
         }
       }
-  
-      console.log("Final assistant message:", assistantMessage);
+
+      console.log("Final assistant message length:", assistantMessage.length)
+      console.log("Final assistant message:", assistantMessage)
+
+      if (assistantMessage) {
+        const savedAssistantId = await saveMessageToDb("assistant", assistantMessage)
+
+        setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, id: savedAssistantId } : m)))
+      }
     } catch (error) {
-      console.error("Chat error:", error);
+      console.error("Chat error:", error)
       setMessages((prev) => [
         ...prev,
         {
@@ -138,17 +208,25 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
           role: "assistant",
           content: "Sorry, I encountered an error. Please try again.",
         },
-      ]);
+      ])
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };    
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e)
     }
+  }
+
+  if (isLoadingMessages) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-muted-foreground">Loading messages...</p>
+      </div>
+    )
   }
 
   return (
