@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 import ChatInterface from "@/components/chat-interface"
 import LogoutButton from "@/components/logout-button"
 
+export const runtime = 'edge';
+
 export default async function Home() {
   const supabase = await createClient()
 
