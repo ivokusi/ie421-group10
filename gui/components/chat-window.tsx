@@ -128,6 +128,8 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
         }),
       })
 
+      console.log(response)
+
       if (!response.ok) {
         throw new Error("Failed to get response")
       }
