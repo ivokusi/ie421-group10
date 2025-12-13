@@ -123,81 +123,32 @@ export default function ChatWindow({ chatId, onUpdateTitle }: ChatWindowProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, userMessage],
+          query: userContent,
+          sessionId : chatId,
         }),
       })
-
-      console.log("Response status:", response.status)
-      console.log("Response headers:", Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
         throw new Error("Failed to get response")
       }
-
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let assistantMessage = ""
-      const assistantId = `assistant-${Date.now()}`
-      const chunkCount = 0
-      let buffer = ""
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          const chunk = decoder.decode(value, { stream: true })
-          buffer += chunk
-
-          const lines = buffer.split("\n")
-          buffer = lines.pop() || ""
-
-          for (const line of lines) {
-            if (!line.trim()) continue
-
-            if (!line.startsWith("data: ")) {
-              continue
-            }
-
-            const jsonStr = line.slice(6).trim()
-
-            if (jsonStr === "[DONE]") {
-              continue
-            }
-
-            try {
-              const parsed = JSON.parse(jsonStr)
-
-              let deltaText = ""
-
-              if (parsed.type === "text-delta" && parsed.delta) {
-                deltaText = parsed.delta
-              } else if (parsed.object === "chat.completion.chunk" && parsed.choices?.[0]?.delta?.content) {
-                deltaText = parsed.choices[0].delta.content
-              }
-
-              if (deltaText) {
-                assistantMessage += deltaText
-
-                setMessages((prev) => {
-                  const filtered = prev.filter((m) => m.id !== assistantId)
-                  return [...filtered, { id: assistantId, role: "assistant", content: assistantMessage }]
-                })
-              }
-            } catch (e) {
-              continue
-            }
-          }
-        }
-      }
-
+      
+      const data = await response.json();
+      const assistantMessage = data.output;
+      
+      console.log("Response:",  assistantMessage)
       console.log("Final assistant message length:", assistantMessage.length)
       console.log("Final assistant message:", assistantMessage)
-
+      
+      
       if (assistantMessage) {
-        const savedAssistantId = await saveMessageToDb("assistant", assistantMessage)
+        const assistantId = `assistant-${Date.now()}`
 
+        setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: assistantMessage }])
+
+        const savedAssistantId = await saveMessageToDb("assistant", assistantMessage)
         setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, id: savedAssistantId } : m)))
+      } else {
+        console.warn("No assistant message received")
       }
     } catch (error) {
       console.error("Chat error:", error)

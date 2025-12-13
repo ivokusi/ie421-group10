@@ -14,20 +14,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages } = await req.json();
-
+    const { query, sessionId } = await req.json();
+    
     const openaiRes = await fetch(
-      "https://api.openai.com/v1/chat/completions",
+      "https://n8n.devlopment.net/webhook/query",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4.1-mini",  // or "gpt-4o-mini"
-          messages,
-          stream: true,           // 👈 TURN ON STREAMING
+          query,
+          sessionId,    
         }),
       }
     );
@@ -45,7 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 👇 Proxy OpenAI's SSE stream directly to the client
+    // Proxy OpenAI's SSE stream directly to the client
     return new Response(openaiRes.body, {
       status: 200,
       headers: {

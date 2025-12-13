@@ -73,7 +73,7 @@ export default function ChatSidebar({ chats, currentChatId, onSelectChat, onNewC
 
       {/* Footer */}
       <div className="border-t border-sidebar-border p-4">
-        <p className="text-muted-foreground text-xs text-center">Powered by GPT-5</p>
+        <p className="text-muted-foreground text-xs text-center">Powered by Group10</p>
       </div>
     </aside>
   )
